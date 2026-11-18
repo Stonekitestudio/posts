@@ -29,7 +29,10 @@ let ok = true;
 try {
   const head = await fetch(url, { method: 'HEAD' });
   console.log(`Image address: ${head.status} ${head.headers.get('content-type')}`);
-  const c = await api('POST', `/${env.IG_USER_ID}/media`, { image_url: url, ...(p.files.length > 1 ? { is_carousel_item: 'true' } : { caption: '' }) });
+  const base = { image_url: url, ...(p.files.length > 1 ? { is_carousel_item: 'true' } : { caption: '' }) };
+  let c;
+  try { c = await api('POST', `/${env.IG_USER_ID}/media`, { ...base, alt_text: p.alt?.[0] || 'test' }); console.log('Instagram accepts alt text: yes'); }
+  catch (e) { console.log(`Instagram accepts alt text: no (${e.message})`); c = await api('POST', `/${env.IG_USER_ID}/media`, base); }
   let status = '';
   for (let i = 0; i < 20 && status !== 'FINISHED'; i++) {
     status = (await api('GET', `/${c.id}`, { fields: 'status_code' })).status_code;
