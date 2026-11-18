@@ -1,0 +1,43 @@
+# Copy to .github/workflows/post.yml in the poster repo (social/export.mjs does this).
+# Every 15 minutes: post whatever approved post is due and save the record (posted.json).
+# Stats are pulled on the Mac into the private repo (social/publish/stats.mjs), never here.
+# GitHub's schedule can run a few minutes late; that's fine for social posts.
+name: post
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Print what would be posted, post nothing
+        type: boolean
+        default: true
+permissions:
+  contents: write
+concurrency:
+  group: post
+  cancel-in-progress: false
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Post what's due
+        run: node publish/post.mjs
+        env:
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          PAGE_ID: ${{ secrets.PAGE_ID }}
+          PAGE_TOKEN: ${{ secrets.PAGE_TOKEN }}
+          RAW_BASE: https://raw.githubusercontent.com/${{ github.repository }}/main
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '1' || '' }}
+      - name: Save the record
+        if: always()
+        run: |
+          git config user.name "stonekite-poster"
+          git config user.email "actions@users.noreply.github.com"
+          git add queue
+          git diff --cached --quiet || (git commit -m "Posted $(date -u +%FT%RZ)" && git push)
