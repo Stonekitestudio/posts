@@ -1,0 +1,22 @@
+# Copy to .github/workflows/check.yml in the poster repo (social/export.mjs does this).
+# Run by hand (Actions, then check, then Run workflow) to confirm the keys work. Prints names and IDs only.
+name: check
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Check the connection
+        run: node publish/check-connection.mjs
+        env:
+          PAGE_TOKEN: ${{ secrets.PAGE_TOKEN }}
+          PAGE_ID: ${{ secrets.PAGE_ID }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
