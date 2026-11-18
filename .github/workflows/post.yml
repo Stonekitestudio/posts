@@ -34,6 +34,7 @@ jobs:
           PAGE_TOKEN: ${{ secrets.PAGE_TOKEN }}
           RAW_BASE: https://raw.githubusercontent.com/${{ github.repository }}/main
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '1' || '' }}
+          ALT_TEXT: '1'  # Instagram accepted alt text in the rehearsal, 2026-11-18
       - name: Save the record
         if: always()
         run: |
