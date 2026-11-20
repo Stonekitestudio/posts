@@ -9,7 +9,9 @@
 //
 // Env: IG_USER_ID, PAGE_ID, PAGE_TOKEN (GitHub secrets), RAW_BASE, GRAPH_VERSION (default v23.0),
 //      DRY_RUN=1 (print the requests, publish nothing), NOW (ISO time, for tests), ALT_TEXT=1
-//      (send alt text on Instagram images; off until the first live test confirms the field).
+//      (send alt text on Instagram images; off until the first live test confirms the field),
+//      WAIT_AHEAD_MIN (if an approved post is due within this many minutes, wait for it and post
+//      it on time; GitHub's schedule only ran about every 6 hours in Nov 2026, so post.yml sets 330).
 // Usage: node publish/post.mjs [queueDir]
 import { readdir, readFile, writeFile, access } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -17,7 +19,8 @@ import { join } from 'node:path';
 const env = process.env;
 const DRY = !!env.DRY_RUN;
 const G = `https://graph.facebook.com/${env.GRAPH_VERSION || 'v23.0'}`;
-const NOW = env.NOW ? new Date(env.NOW) : new Date();
+let NOW = env.NOW ? new Date(env.NOW) : new Date();
+const WAIT_MS = (Number(env.WAIT_AHEAD_MIN) || 0) * 60e3;
 const LATE_MS = 6 * 3600e3; // a post more than 6 hours late is held and reported, never posted silently
 const QUEUE = process.argv[2] || 'queue';
 
@@ -85,11 +88,29 @@ async function toFacebook(p, urls) {
   return { id: (await api('POST', `/${page}/feed`, { message: p.caption, attached_media: JSON.stringify(media) })).id };
 }
 
+// Sleep until the next approved, unposted post if it's due within WAIT_AHEAD_MIN.
+async function waitForNext(folders) {
+  let next = null;
+  for (const f of folders) {
+    const dir = join(QUEUE, f);
+    const p = JSON.parse(await readFile(join(dir, 'post.json'), 'utf8'));
+    const done = await access(join(dir, 'posted.json')).then(async () => JSON.parse(await readFile(join(dir, 'posted.json'), 'utf8')), () => ({}));
+    if (!p.approved || done.held || (done.instagram && done.facebook)) continue;
+    const due = zoned(p.date, p.time, p.timezone || 'America/New_York');
+    if (due > NOW && due - NOW <= WAIT_MS && (!next || due < next.due)) next = { f, due };
+  }
+  if (!next) return;
+  console.log(`waiting for ${next.f} (due ${next.due.toISOString()}, ${Math.round((next.due - NOW) / 60e3)} min)`);
+  await new Promise((r) => setTimeout(r, next.due - NOW + 5e3));
+  NOW = new Date();
+}
+
 if (process.argv[1]?.endsWith('post.mjs')) await main();
 
 async function main() {
 const folders = (await readdir(QUEUE, { withFileTypes: true }).catch(() => [])).filter((d) => d.isDirectory()).map((d) => d.name).sort();
 let failures = 0;
+if (WAIT_MS && !DRY) await waitForNext(folders);
 for (const f of folders) {
   const dir = join(QUEUE, f);
   const p = JSON.parse(await readFile(join(dir, 'post.json'), 'utf8'));
