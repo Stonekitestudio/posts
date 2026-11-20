@@ -1,7 +1,10 @@
 # Copy to .github/workflows/post.yml in the poster repo (social/export.mjs does this).
-# Every 15 minutes: post whatever approved post is due and save the record (posted.json).
+# Posts whatever approved post is due and saves the record (posted.json).
 # Stats are pulled on the Mac into the private repo (social/publish/stats.mjs), never here.
-# GitHub's schedule can run a few minutes late; that's fine for social posts.
+# Main trigger: an outside timer (cron-job.org) calls GitHub's workflow_dispatch API at
+# 8:31, 8:46, 18:31 and 18:46 New York time with inputs {"dry_run": "false"} (see SETUP.md).
+# The 15-minute schedule below is only a backup: in Nov 2026 GitHub ran it about every
+# 6 hours, which held the Nov 19 morning post. Extra runs are harmless (posted.json).
 name: post
 on:
   schedule:
