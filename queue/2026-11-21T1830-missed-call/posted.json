@@ -1,0 +1,4 @@
+{
+  "instagramError": "2026-11-21T23:30:05.230Z POST /17841479836163576/media: Cannot call API for app 1120355727446445 on behalf of user 122138022386982338",
+  "facebookError": "2026-11-21T23:30:05.286Z POST /1484070624779008/photos: Cannot call API for app 1120355727446445 on behalf of user 122138022386982338"
+}
