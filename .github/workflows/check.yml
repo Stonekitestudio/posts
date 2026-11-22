@@ -1,7 +1,11 @@
 # Copy to .github/workflows/check.yml in the poster repo (social/export.mjs does this).
-# Run by hand (Actions, then check, then Run workflow) to confirm the keys work. Prints names and IDs only.
+# Runs every morning (about 6 AM ET) to confirm the key still works, so a dead key turns red and
+# emails the owner before the 8:30 AM post. Run by hand (Actions, then check, then Run workflow) to
+# also rehearse the next post. Prints names and IDs only.
 name: check
 on:
+  schedule:
+    - cron: '7 11 * * *'
   workflow_dispatch:
 permissions:
   contents: read
@@ -21,6 +25,7 @@ jobs:
           PAGE_ID: ${{ secrets.PAGE_ID }}
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
       - name: Rehearse the next post (nothing is published)
+        if: github.event_name == 'workflow_dispatch'
         run: node publish/preflight.mjs
         env:
           PAGE_TOKEN: ${{ secrets.PAGE_TOKEN }}
